@@ -61,44 +61,25 @@ class SymbolGraphBuilder:
 
         symbols = []
 
-        # STRATEGY: Try passing query to constructor (0.23 style)
-        # If that fails (TypeError), try empty constructor (0.21/0.25 style)
+        # Try different tree-sitter API versions
         try:
-            # Try 0.23 style: Cursor is bound to a specific query
             cursor = tree_sitter.QueryCursor(query)
-            if hasattr(cursor, "captures"):
-                results = cursor.captures(tree.root_node)
-            else:
-                results = []  # pragma: no cover - tree-sitter API variant
-
+            results = cursor.captures(tree.root_node)
         except TypeError:  # pragma: no cover
-            # Fallback to 0.21/0.25 style: Cursor is reusable
-            cursor = tree_sitter.QueryCursor()
-            results = cursor.captures(query, tree.root_node)
+            results = {}  # Fallback
 
-        # Last resort: legacy style on Query object
-        if not results and hasattr(query, "captures"):  # pragma: no cover
-            results = query.captures(tree.root_node)
-
-        # Iterate safely
-        for item in results:
-            node = None
-            tag = "unknown"
-
-            if isinstance(item, tuple) and len(item) == 2:
-                node, tag = item  # pragma: no cover - tuple format
-            elif hasattr(item, "node"):  # pragma: no cover
-                node = item.node
-
-            if node:  # pragma: no cover
-                parent_type = node.parent.type if node.parent else ""
-                symbols.append(
-                    {
-                        "name": node.text.decode("utf8"),
-                        "type": "function" if "function" in parent_type else "class",
-                        "line": node.start_point[0] + 1,
-                    }
-                )
+        # Handle dict format (newer tree-sitter): {'name': [Node, Node], 'type': [Node]}
+        if isinstance(results, dict):
+            for tag, nodes in results.items():
+                for node in nodes:
+                    parent_type = node.parent.type if node.parent else ""
+                    symbols.append(
+                        {
+                            "name": node.text.decode("utf8"),
+                            "type": parent_type.replace("_definition", ""),
+                            "line": node.start_point[0] + 1,
+                        }
+                    )
 
         return symbols
 

@@ -10,10 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 
 [tool.hatch.build.targets.wheel]
-packages = []
+packages = ["packages/core/src/cog_core"]
 
-[tool.uv.workspace]
-members = ["packages/core"]
-
-[tool.uv.sources]
-cog-core = { workspace = true }
+[tool.hatch.metadata]
+allow-direct-references = true
