@@ -318,18 +318,6 @@ npm run dev
 
 ---
 
-## Consolidated Repositories
-
-This monorepo consolidates three previous repositories:
-
-| Original Repo | New Location |
-|---------------|--------------|
-| `cog-mcp` | `packages/mcp/` |
-| `cog-core` | `packages/core/` |
-| `dreams-ai-core` | Merged into `packages/core/` (was duplicate) |
-
----
-
 ## License
 
 MIT © [Vitor Calvi](https://github.com/vitorcalvi)
