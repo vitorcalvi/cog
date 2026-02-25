@@ -13,7 +13,10 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "watch": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "mcp",
@@ -30,7 +33,9 @@
   "devDependencies": {
     "@types/node": "^25.0.9",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

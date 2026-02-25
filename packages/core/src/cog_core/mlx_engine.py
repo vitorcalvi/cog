@@ -53,7 +53,7 @@ class DreamsMLXEngine:
         return embedding
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     engine = DreamsMLXEngine()
     v = engine.get_embedding("Hello Cog AI")
     print(f"✅ GPU Vector Generated (Dim: {len(v)})")

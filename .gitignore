@@ -71,3 +71,9 @@ htmlcov/
 # Misc
 *.log
 *.tmp
+
+# Coverage
+coverage/
+.nyc_output/
+*.lcov
+

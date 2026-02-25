@@ -41,5 +41,5 @@ def validate_embeddings():
     print("\n✅ COG CORE OPERATIONAL")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     test_core()
