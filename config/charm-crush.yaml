@@ -1,0 +1,27 @@
+name: charm-crush
+enabled: true
+type: local
+command:
+  - "node"
+  - "${PWD}/packages/mcp/dist/index.js"
+environment:
+  COG_CORE_DIR: "${PWD}/packages/core"
+  COG_DB_PATH: "${PWD}/packages/core/cog_memory"
+  COG_PYTHON_CMD: "uv run python"
+resources:
+  cpu: "1"
+  memory: "512MB"
+logging:
+  level: info
+  file: "logs/charm-crush.log"
+mcp:
+  tools:
+    - search_code
+    - analyze_structure
+    - generate_embedding
+timeouts:
+  tool_execution: 60  # seconds
+  process_restart: 10 # seconds
+health_check:
+  path: "/health"
+  interval: 30 # seconds
