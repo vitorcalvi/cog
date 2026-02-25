@@ -1,0 +1,22 @@
+{
+  "name": "cog-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Semantic Code Intelligence with Apple Silicon MLX",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:mcp": "npm run build --workspace=@cog/mcp-server",
+    "build": "npm run build:mcp"
+  },
+  "keywords": [
+    "mcp",
+    "semantic-search",
+    "code-intelligence",
+    "apple-silicon",
+    "mlx"
+  ],
+  "author": "Vitor Calvi",
+  "license": "MIT"
+}

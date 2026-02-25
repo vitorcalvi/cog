@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cog-workspace"
+version = "1.0.0"
+description = "Semantic Code Intelligence with Apple Silicon MLX"
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.hatch.build.targets.wheel]
+packages = []
+
+[tool.uv.workspace]
+members = ["packages/core"]
+
+[tool.uv.sources]
+cog-core = { workspace = true }
