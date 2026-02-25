@@ -10,10 +10,10 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'tests/**'],
-      lines: 15,
-      branches: 50,
-      functions: 0,
-      statements: 15
+      lines: 98,
+      branches: 95,
+      functions: 100,
+      statements: 98
     }
   }
 });

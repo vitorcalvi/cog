@@ -77,3 +77,7 @@ coverage/
 .nyc_output/
 *.lcov
 
+
+# Python virtual environment
+.venv/
+

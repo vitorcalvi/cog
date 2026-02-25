@@ -1,28 +1,4 @@
 #!/usr/bin/env node
-/**
- * Cog MCP Server - Semantic Code Intelligence for AI Assistants
- * 
- * Exposes code search and analysis tools via the Model Context Protocol.
- * Works with Claude Desktop, Cursor, and other MCP-compatible clients.
- * 
- * Usage:
- *   npx @cog/mcp-server
- * 
- * Or configure in Claude Desktop:
- *   {
- *     "mcpServers": {
- *       "cog": {
- *         "command": "npx",
- *         "args": ["@cog/mcp-server"],
- *         "env": {
- *           "COG_CORE_DIR": "/path/to/cog/packages/core",
- *           "COG_DB_PATH": "/path/to/cog_memory"
- *         }
- *       }
- *     }
- *   }
- */
-
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -35,175 +11,36 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-// --- CONFIGURATION ---
-// Use environment variables for flexibility, with sensible defaults
-const COG_CORE_DIR = process.env.COG_CORE_DIR || process.cwd();
-const COG_DB_PATH = process.env.COG_DB_PATH || "./cog_memory";
-const PYTHON_CMD = process.env.COG_PYTHON_CMD || "uv run python";
+export const COG_CORE_DIR = process.env.COG_CORE_DIR || process.cwd();
+export const COG_DB_PATH = process.env.COG_DB_PATH || "./cog_memory";
+export const PYTHON_CMD = process.env.COG_PYTHON_CMD || "uv run python";
 
-const server = new Server(
-  { name: "cog-intelligence", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
+export function escapeSingleQuotes(str: string): string {
+  return str.replace(/'/g, "\\'");
+}
 
-// --- TOOL DEFINITIONS ---
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "search_code",
-      description: "Semantic search of the codebase. Finds code by meaning (e.g., 'function that handles authentication'). Returns matching code snippets with similarity scores.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "Natural language description of what code you're looking for"
-          },
-          limit: {
-            type: "integer",
-            description: "Maximum number of results",
-            default: 5
-          }
-        },
-        required: ["query"]
-      }
-    },
-    {
-      name: "analyze_structure",
-      description: "Analyze the structure of a source file - extract all classes, functions, and their relationships using tree-sitter parsing.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          file_path: {
-            type: "string",
-            description: "Absolute path to the source file"
-          }
-        },
-        required: ["file_path"]
-      }
-    },
-    {
-      name: "generate_embedding",
-      description: "Generate a Nomic embedding vector for any text using Metal GPU acceleration. Useful for debugging or custom similarity comparisons.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          text: {
-            type: "string",
-            description: "Text to embed"
-          }
-        },
-        required: ["text"]
-      }
-    }
-  ]
-}));
+export function escapeDoubleQuotes(str: string): string {
+  return str.replace(/"/g, '\\"');
+}
 
-// --- TOOL HANDLERS ---
-server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
-  const { name, arguments: args } = request.params;
+export function detectLanguage(filePath: string): string {
+  const ext = filePath.split('.').pop() || '';
+  const langMap: Record<string, string> = {
+    'py': 'python',
+    'js': 'javascript',
+    'ts': 'typescript',
+    'tsx': 'tsx'
+  };
+  return langMap[ext] || 'python';
+}
 
-  // TOOL: search_code - Semantic vector search
-  if (name === "search_code") {
-    const query = String(args?.query).replace(/'/g, "\\'");
-    const limit = args?.limit || 5;
-
-    const script = `
-import json
-import sys
-sys.path.insert(0, '${COG_CORE_DIR}/src')
-
-from cog_core.indexer import CodeIndexer
-
-try:
-    indexer = CodeIndexer(db_path='${COG_DB_PATH}')
-    results = indexer.search('${query}', limit=${limit})
-    print(json.dumps(results))
-except Exception as e:
-    print(json.dumps({"error": str(e), "hint": "Run 'cog-index' to index your codebase first"}))
-`;
-    return executePython(script);
-  }
-
-  // TOOL: analyze_structure - Tree-sitter parsing
-  if (name === "analyze_structure") {
-    const filePath = String(args?.file_path).replace(/'/g, "\\'").replace(/"/g, '\\"');
-    const script = `
-import json
-import sys
-import os
-sys.path.insert(0, '${COG_CORE_DIR}/src')
-
-from cog_core.graph_builder import SymbolGraphBuilder
-
-try:
-    if not os.path.exists('${filePath}'):
-        print(json.dumps({"error": "File not found", "path": '${filePath}'}))
-    else:
-        # Detect language from extension
-        ext = '${filePath}'.split('.')[-1]
-        lang_map = {'py': 'python', 'js': 'javascript', 'ts': 'typescript', 'tsx': 'tsx'}
-        lang = lang_map.get(ext, 'python')
-        
-        with open('${filePath}', 'r', encoding='utf-8') as f:
-            code = f.read()
-        builder = SymbolGraphBuilder(lang)
-        symbols = builder.parse_symbols(code)
-        
-        # Also get dependency analysis
-        resource_deps, op_resources = builder.extract_resource_dependencies(symbols, code)
-        
-        print(json.dumps({
-            "file": '${filePath}',
-            "language": lang,
-            "symbols": symbols,
-            "resource_dependencies": resource_deps,
-            "operation_resources": op_resources
-        }))
-except Exception as e:
-    print(json.dumps({"error": str(e), "type": str(type(e).__name__)}))
-`;
-    return executePython(script);
-  }
-
-  // TOOL: generate_embedding - Raw embedding generation
-  if (name === "generate_embedding") {
-    const text = String(args?.text).replace(/'/g, "\\'").replace(/"/g, '\\"');
-    const script = `
-import json
-import sys
-sys.path.insert(0, '${COG_CORE_DIR}/src')
-
-from cog_core.mlx_engine import DreamsMLXEngine
-
-try:
-    engine = DreamsMLXEngine()
-    embedding = engine.get_embedding('${text}')
-    embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else embedding
-    print(json.dumps({
-        "text": '${text}',
-        "dimensions": len(embedding_list),
-        "embedding_preview": embedding_list[:10]  # First 10 dims for preview
-    }))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-`;
-    return executePython(script);
-  }
-
-  throw new Error(`Unknown tool: ${name}`);
-});
-
-/**
- * Execute Python script in the core directory
- */
-async function executePython(pythonScript: string): Promise<CallToolResult> {
+export async function executePython(pythonScript: string): Promise<CallToolResult> {
   try {
-    const escapedScript = pythonScript.replace(/"/g, '\\"');
+    const escapedScript = escapeDoubleQuotes(pythonScript);
     const command = `cd ${COG_CORE_DIR} && ${PYTHON_CMD} -c "${escapedScript}"`;
 
     const { stdout, stderr } = await execAsync(command, {
-      maxBuffer: 10 * 1024 * 1024  // 10MB buffer for large codebases
+      maxBuffer: 10 * 1024 * 1024
     });
 
     if (stderr && !stdout) {
@@ -226,12 +63,170 @@ async function executePython(pythonScript: string): Promise<CallToolResult> {
   }
 }
 
-// --- START SERVER ---
-const transport = new StdioServerTransport();
+export function buildSearchScript(query: string, limit: number): string {
+  const escapedQuery = escapeSingleQuotes(query);
+  return `
+import json
+import sys
+sys.path.insert(0, '${COG_CORE_DIR}/src')
 
-(async () => {
-  console.error(`🚀 Cog MCP Server starting...`);
-  console.error(`   Core Dir: ${COG_CORE_DIR}`);
-  console.error(`   DB Path: ${COG_DB_PATH}`);
+from cog_core.indexer import CodeIndexer
+
+try:
+    indexer = CodeIndexer(db_path='${COG_DB_PATH}')
+    results = indexer.search('${escapedQuery}', limit=${limit})
+    if results and 'error' in results[0]:
+        print(json.dumps(results))
+    else:
+        print(json.dumps(results))
+except Exception as e:
+    error_msg = str(e)
+    hint = "Run 'cog-index' to index your codebase first" if "No such file" in error_msg else None
+    print(json.dumps({"error": error_msg, "hint": hint}))
+`;
+}
+
+export function buildAnalyzeScript(filePath: string): string {
+  const escapedPath = escapeSingleQuotes(filePath);
+  const lang = detectLanguage(filePath);
+  return `
+import json
+import sys
+import os
+sys.path.insert(0, '${COG_CORE_DIR}/src')
+
+from cog_core.graph_builder import SymbolGraphBuilder
+
+try:
+    if not os.path.exists('${escapedPath}'):
+        print(json.dumps({"error": "File not found", "path": '${escapedPath}'}))
+    else:
+        lang = '${lang}'
+        
+        with open('${escapedPath}', 'r', encoding='utf-8') as f:
+            code = f.read()
+        builder = SymbolGraphBuilder(lang)
+        symbols = builder.parse_symbols(code)
+        
+        resource_deps, op_resources = builder.extract_resource_dependencies(symbols, code)
+        
+        print(json.dumps({
+            "file": '${escapedPath}',
+            "language": lang,
+            "symbols": symbols,
+            "resource_dependencies": resource_deps,
+            "operation_resources": op_resources
+        }))
+except Exception as e:
+    print(json.dumps({"error": str(e), "type": str(type(e).__name__)}))
+`;
+}
+
+export function buildEmbeddingScript(text: string): string {
+  const escapedText = escapeSingleQuotes(text);
+  return `
+import json
+import sys
+sys.path.insert(0, '${COG_CORE_DIR}/src')
+
+from cog_core.mlx_engine import DreamsMLXEngine
+
+try:
+    engine = DreamsMLXEngine()
+    embedding = engine.get_embedding('${escapedText}')
+    embedding_list = embedding.tolist() if hasattr(embedding, 'tolist') else embedding
+    print(json.dumps({
+        "text": '${escapedText}',
+        "dimensions": len(embedding_list),
+        "embedding_preview": embedding_list[:10]
+    }))
+except Exception as e:
+    print(json.dumps({"error": str(e)}))
+`;
+}
+
+export async function handleToolCall(
+  name: string,
+  args: Record<string, unknown> | undefined | null
+): Promise<CallToolResult> {
+  const query = String(args?.query || '');
+  const limit = Number(args?.limit) || 5;
+  const filePath = String(args?.file_path || '');
+  const text = String(args?.text || '');
+
+  switch (name) {
+    case 'search_code':
+      return executePython(buildSearchScript(query, limit));
+    case 'analyze_structure':
+      return executePython(buildAnalyzeScript(filePath));
+    case 'generate_embedding':
+      return executePython(buildEmbeddingScript(text));
+    default:
+      throw new Error(`Unknown tool: ${name}`);
+  }
+}
+
+export const TOOLS = [
+  {
+    name: "search_code",
+    description: "Semantic search of the codebase. Finds code by meaning.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Natural language search query" },
+        limit: { type: "integer", description: "Max results", default: 5 }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "analyze_structure",
+    description: "Analyze the structure of a source file.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file_path: { type: "string", description: "Absolute path to file" }
+      },
+      required: ["file_path"]
+    }
+  },
+  {
+    name: "generate_embedding",
+    description: "Generate a Nomic embedding vector for text.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Text to embed" }
+      },
+      required: ["text"]
+    }
+  }
+];
+
+export function createServer(): Server {
+  const server = new Server(
+    { name: "cog-intelligence", version: "1.0.0" },
+    { capabilities: { tools: {} } }
+  );
+
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+
+  server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
+    const { name, arguments: args } = request.params;
+    return handleToolCall(name, args);
+  });
+
+  return server;
+}
+
+export async function startServer(): Promise<void> {
+  const server = createServer();
+  const transport = new StdioServerTransport();
   await server.connect(transport);
-})();
+}
+
+/* c8 ignore start */
+if (process.argv[1] && !process.argv[1].includes('vitest')) {
+  startServer().catch(console.error);
+}
+/* c8 ignore stop */
