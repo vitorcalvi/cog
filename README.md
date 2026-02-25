@@ -78,7 +78,7 @@ Replace `/ABSOLUTE/PATH/TO` with your actual path.
 | Package | Tests | Coverage |
 |---------|-------|----------|
 | Python Core | 60 | 100% |
-| TypeScript MCP | 34 | 98.7% |
+| TypeScript MCP | 35 | 98.7% |
 
 Run tests:
 ```bash

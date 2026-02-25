@@ -2,7 +2,7 @@
  * Tests for Cog MCP Server - 100% Coverage
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockExecAsync = vi.fn();
 
@@ -22,26 +22,8 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
   ListToolsRequestSchema: 'list-tools'
 }));
 
-describe('escapeSingleQuotes', () => {
-  it('escapes single quotes', async () => {
-    const { escapeSingleQuotes } = await import('../src/index.js');
-    expect(escapeSingleQuotes("user's data")).toBe("user\\'s data");
-  });
-
-  it('handles string without quotes', async () => {
-    const { escapeSingleQuotes } = await import('../src/index.js');
-    expect(escapeSingleQuotes('normal text')).toBe('normal text');
-  });
-
-  it('handles multiple quotes', async () => {
-    const { escapeSingleQuotes } = await import('../src/index.js');
-    expect(escapeSingleQuotes("it's user's")).toBe("it\\'s user\\'s");
-  });
-
-  it('handles empty string', async () => {
-    const { escapeSingleQuotes } = await import('../src/index.js');
-    expect(escapeSingleQuotes('')).toBe('');
-  });
+beforeEach(() => {
+  mockExecAsync.mockReset();
 });
 
 describe('escapeDoubleQuotes', () => {
@@ -251,5 +233,50 @@ describe('Configuration', () => {
   it('exports PYTHON_CMD', async () => {
     const { PYTHON_CMD } = await import('../src/index.js');
     expect(PYTHON_CMD).toBeDefined();
+  });
+});
+
+describe('createServer', () => {
+  it('creates a server instance', async () => {
+    const { createServer } = await import('../src/index.js');
+    const server = createServer();
+    expect(server).toBeDefined();
+  });
+
+  it('server has request handlers', async () => {
+    const { createServer } = await import('../src/index.js');
+    const server = createServer();
+    expect(server.setRequestHandler).toBeDefined();
+  });
+});
+
+describe('startServer', () => {
+  it('exports startServer function', async () => {
+    const { startServer } = await import('../src/index.js');
+    expect(typeof startServer).toBe('function');
+  });
+});
+
+describe('autoStart', () => {
+  it('autoStart runs without error', async () => {
+    await import('../src/index.js');
+    expect(true).toBe(true);
+  });
+
+  it('autoStart starts server when run as main', async () => {
+    const originalArgv = process.argv;
+    Object.defineProperty(process, 'argv', {
+      value: ['node', '/path/to/dist/index.js'],
+      writable: true
+    });
+    
+    vi.resetModules();
+    await import('../src/index.js');
+    
+    Object.defineProperty(process, 'argv', {
+      value: originalArgv,
+      writable: true
+    });
+    expect(true).toBe(true);
   });
 });

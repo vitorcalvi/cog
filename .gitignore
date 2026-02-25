@@ -81,3 +81,16 @@ coverage/
 # Python virtual environment
 .venv/
 
+.venv/
+node_modules/
+*.pyc
+__pycache__/
+coverage/
+*.lcov
+.DS_Store
+cog_memory/
+dreams_memory/
+*.lance/
+.uv/
+uv.lock
+

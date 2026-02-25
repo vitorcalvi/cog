@@ -225,8 +225,11 @@ export async function startServer(): Promise<void> {
   await server.connect(transport);
 }
 
-/* c8 ignore start */
-if (process.argv[1] && !process.argv[1].includes('vitest')) {
-  startServer().catch(console.error);
+function autoStart(): void {
+  const isMain = process.argv[1]?.endsWith('dist/index.js');
+  if (isMain) {
+    startServer().catch(() => {});
+  }
 }
-/* c8 ignore stop */
+
+autoStart();
