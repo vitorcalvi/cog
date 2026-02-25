@@ -185,4 +185,4 @@ This monorepo consolidates three previous repositories:
 
 ## License
 
-MIT © Vitor Calvi
+MIT © [Vitor Calvi](https://github.com/vitorcalvi)
